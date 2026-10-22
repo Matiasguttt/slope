@@ -1,270 +1,733 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Slope Clone</title>
-    <!-- Include A-Frame Library for 3D and VR WebGL rendering -->
-    <script src="https://aframe.io"></script>
-    <style>
-      html, body { margin: 0; padding: 0; overflow: hidden; background-color: #000; width: 100%; height: 100%; }
-      #scoreUi {
-        position: absolute;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        color: #00ffff;
-        font-family: monospace;
-        font-size: 32px;
-        font-weight: bold;
-        z-index: 999;
-        text-shadow: 0 0 10px #00ffff;
-        pointer-events: none;
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SLOPE VR: Body Dodge</title>
+
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #050711;
+      font-family: system-ui, sans-serif;
+    }
+
+    #hud {
+      position: fixed;
+      z-index: 5;
+      inset: 16px 16px auto 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      gap: 12px;
+    }
+
+    .panel {
+      background: rgba(5, 9, 24, .72);
+      border: 1px solid rgba(82, 229, 255, .38);
+      box-shadow: 0 0 24px #00c8ff18;
+      border-radius: 14px;
+      padding: 11px 15px;
+      backdrop-filter: blur(8px);
+    }
+
+    .eyebrow {
+      font-size: 10px;
+      letter-spacing: .22em;
+      color: #65eaff;
+      font-weight: 800;
+    }
+
+    #score {
+      font-size: 27px;
+      line-height: 1.15;
+      font-weight: 850;
+    }
+
+    #status {
+      font-size: 12px;
+      color: #c2d2ed;
+      margin-top: 3px;
+    }
+
+    #centerMsg {
+      position: fixed;
+      z-index: 6;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(480px, calc(100vw - 36px));
+      text-align: center;
+      background: rgba(4, 8, 24, .9);
+      border: 1px solid #39dfff;
+      border-radius: 22px;
+      padding: 25px 24px;
+      box-shadow: 0 0 55px #00d9ff25;
+      color: white;
+    }
+
+    #centerMsg h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 5vw, 46px);
+      letter-spacing: .06em;
+    }
+
+    #centerMsg p {
+      color: #c6d6ed;
+      line-height: 1.5;
+      margin: 8px 0 18px;
+    }
+
+    button {
+      pointer-events: auto;
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 21px;
+      margin: 4px;
+      color: #06101c;
+      background: #63ecff;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      color: white;
+      background: #202d48;
+      border: 1px solid #445778;
+    }
+
+    #hint {
+      position: fixed;
+      z-index: 5;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: calc(100vw - 32px);
+      text-align: center;
+      color: #c4d7f3;
+      background: #050919b8;
+      border: 1px solid #263a5e;
+      border-radius: 999px;
+      padding: 9px 15px;
+      font-size: 12px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #crosshair {
+      position: fixed;
+      z-index: 4;
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      transform: translate(-50%, -50%);
+      border: 1px solid #8ff4ff;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: .45;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 540px) {
+      #hud {
+        inset: 8px 8px auto;
       }
-      #gameOverUi {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        color: #ff0055;
-        font-family: monospace;
-        font-size: 48px;
-        font-weight: bold;
-        z-index: 999;
-        text-shadow: 0 0 15px #ff0055;
-        display: none;
-        text-align: center;
-        background: rgba(0,0,0,0.9);
-        padding: 20px 40px;
-        border: 2px solid #ff0055;
-        border-radius: 5px;
+
+      .panel {
+        padding: 8px 10px;
       }
-      #gameOverUi span {
-        font-size: 18px;
-        color: #ffffff;
-        display: block;
-        margin-top: 15px;
-        text-shadow: none;
+
+      #score {
+        font-size: 22px;
       }
-    </style>
-  </head>
-  <body>
 
-    <!-- Instant HUD display -->
-    <div id="scoreUi">SCORE: 0</div>
-    <div id="gameOverUi">GAME OVER<span id="restartHint">Press SPACE or Click Screen to Try Again</span></div>
+      #hint {
+        font-size: 10px;
+        bottom: 10px;
+        white-space: normal;
+      }
+    }
+  </style>
+</head>
 
-    <!-- A-Frame Scene Embedded in Viewport Frame -->
-    <a-scene id="main-scene" embedded style="width: 100%; height: 100%;">
-      <!-- Pitch Black Space Environment -->
-      <a-sky color="#000000"></a-sky>
+<body>
 
-      <!-- Low ambient illumination to keep things dark but readable -->
-      
-      
+  <!-- HUD -->
+  <div id="hud">
+    <div class="panel">
+      <div class="eyebrow">SLOPE VR / BODY DODGE</div>
+      <div id="score">0000</div>
+      <div id="status">READY TO ROLL</div>
+    </div>
 
-      <!-- Dynamic Procedural Generation World Container -->
-      
+    <div class="panel" style="text-align:right">
+      <div class="eyebrow">PACE</div>
+      <div id="pace" style="font-size:20px;font-weight:850">
+        CHILL
+      </div>
+      <div id="best" style="font-size:11px;color:#c2d2ed">
+        BEST 0000
+      </div>
+    </div>
+  </div>
 
-      <!-- Player Rigid Target Body -->
-      
-        <!-- Player Ball -->
-        <a-sphere id="player-ball" radius="0.5" color="#ffffff" material="emissive: #ffffff; emissiveIntensity: 0.5"></a-sphere>
-        <!-- Third person follow camera view angle -->
-        
-      
-    </a-scene>
+  <div id="crosshair"></div>
 
-    <script>
-      // Game Speed and Loop Dynamics
+  <!-- Start / game over menu -->
+  <div id="centerMsg">
+    <div class="eyebrow">A BODY-MOTION VR RUNNER</div>
+
+    <h1 id="messageTitle">SLOPE VR</h1>
+
+    <p id="messageText">
+      Ride the neon slope. Dodge the red blocks by physically
+      leaning or stepping left and right. The run starts slower
+      than classic Slope, then gently picks up pace.
+    </p>
+
+    <button id="startBtn">START RUN</button>
+    <button id="vrBtn" class="secondary">ENTER VR</button>
+
+    <p style="font-size:11px;margin-bottom:0">
+      VR tip: clear a little space around you. Small movements work best.
+    </p>
+  </div>
+
+  <div id="hint">
+    Lean / shift LEFT and RIGHT to dodge • Desktop: A / D • Press R to recenter
+  </div>
+
+  <!-- A-FRAME SCENE -->
+  <a-scene
+    id="scene"
+    renderer="antialias: true; colorManagement: true"
+    vr-mode-ui="enabled: true"
+    webxr="optionalFeatures: local-floor, bounded-floor"
+    background="color: #050711"
+    fog="type: linear; color: #080d20; near: 18; far: 95">
+
+    <a-assets>
+      <a-mixin
+        id="blockMat"
+        material="color: #ff315f; emissive: #ff123e;
+        emissiveIntensity: 0.75; metalness: 0.25; roughness: 0.35">
+      </a-mixin>
+    </a-assets>
+
+    <!-- Lighting -->
+    <a-entity
+      light="type: ambient; color: #8298ff; intensity: 0.8">
+    </a-entity>
+
+    <a-entity
+      light="type: directional; color: #75eaff; intensity: 1.1"
+      position="-3 8 5">
+    </a-entity>
+
+    <!-- Game world -->
+    <a-entity id="world">
+
+      <!-- Neon track -->
+      <a-plane
+        id="track"
+        position="0 -0.12 -22"
+        rotation="-90 0 0"
+        width="12"
+        height="120"
+        material="color: #101a38; emissive: #071b4b;
+        emissiveIntensity: .55; roughness: .7">
+      </a-plane>
+
+      <a-entity id="trackLines"></a-entity>
+      <a-entity id="obstacles"></a-entity>
+      <a-entity id="scenery"></a-entity>
+    </a-entity>
+
+    <!-- Player rig -->
+    <a-entity id="rig" position="0 0 0">
+      <a-camera
+        id="camera"
+        position="0 1.65 0"
+        look-controls="enabled: true"
+        wasd-controls="enabled: false">
+
+        <a-entity
+          cursor="rayOrigin: mouse"
+          raycaster="objects: .clickable"
+          position="0 0 -1">
+        </a-entity>
+
+      </a-camera>
+    </a-entity>
+
+  </a-scene>
+
+  <script>
+    (() => {
+      // ============================================
+      // ELEMENTS
+      // ============================================
+
+      const scene = document.querySelector('#scene');
+      const rig = document.querySelector('#rig');
+      const camera = document.querySelector('#camera');
+
+      const obstaclesRoot = document.querySelector('#obstacles');
+      const sceneryRoot = document.querySelector('#scenery');
+      const linesRoot = document.querySelector('#trackLines');
+
+      const scoreEl = document.querySelector('#score');
+      const statusEl = document.querySelector('#status');
+      const paceEl = document.querySelector('#pace');
+      const bestEl = document.querySelector('#best');
+
+      const overlay = document.querySelector('#centerMsg');
+      const titleEl = document.querySelector('#messageTitle');
+      const textEl = document.querySelector('#messageText');
+
+      const startBtn = document.querySelector('#startBtn');
+      const vrBtn = document.querySelector('#vrBtn');
+      const hint = document.querySelector('#hint');
+
+      // ============================================
+      // GAME SETTINGS
+      // ============================================
+
+      let running = false;
+      let gameOver = false;
+
       let score = 0;
-      let gameActive = false; // Start inactive until scene rendering fires
-      let speed = 45; // Immediate high-velocity baseline
-      const maxSpeed = 100;
-      const acceleration = 2.0; 
-      
-      // Coordinate Position Vector Tracking
+      let speed = 7.2;
+      let elapsed = 0;
+
+      let best = 0;
       let playerX = 0;
-      let playerY = 0; 
-      let fallVelocity = 0;
-      const gravity = -40;
-      const sideSpeed = 28; 
-      
-      let keys = { ArrowLeft: false, ArrowRight: false, KeyA: false, KeyD: false };
-      
-      const container = document.getElementById('world-container');
-      const scoreUi = document.getElementById('scoreUi');
-      const gameOverUi = document.getElementById('gameOverUi');
-      const sceneEl = document.getElementById('main-scene');
-      
-      let platformSegments = [];
-      let segmentZLength = 25; 
-      let nextSpawnZ = 0; 
-      const trackLimit = 15;
+      let centerX = 0;
+      let desktopX = 0;
 
-      // Event Control Listeners
-      window.addEventListener('keydown', (e) => {
-        if (e.code in keys) keys[e.code] = true;
-        if (!gameActive && (e.code === 'Space')) restartGame();
-      });
-      window.addEventListener('keyup', (e) => {
-        if (e.code in keys) keys[e.code] = false;
-      });
-      window.addEventListener('click', () => {
-        if (!gameActive) restartGame();
-      });
+      let lastTime = 0;
+      let spawnTimer = 0;
 
-      // Procedural Vector Generator Loop
-      function createPlatformSegment() {
-        let width = Math.max(3.5, 10 - (score * 0.15)); 
-        let xOffset = (Math.random() - 0.5) * 7; 
-        let slopeAngle = -Math.min(28, 10 + (score * 0.4)); 
-        
-        let isGap = Math.random() < 0.15 && platformSegments.length > 3;
+      let obstacles = [];
+      let scenery = [];
+      let trackMarks = [];
 
-        if (!isGap) {
-          // Generate active platform segment
-          let el = document.createElement('a-box');
-          el.setAttribute('width', width);
-          el.setAttribute('height', 0.5);
-          el.setAttribute('depth', segmentZLength);
-          el.setAttribute('color', '#000000');
-          el.setAttribute('material', 'emissive: #00ffff; emissiveIntensity: 0.8; roughness: 1');
-          el.setAttribute('position', `${xOffset} ${slopeAngle/4} ${nextSpawnZ - (segmentZLength/2)}`);
-          el.setAttribute('rotation', `${slopeAngle} 0 0`);
-          container.appendChild(el);
+      const laneX = [-2.45, 0, 2.45];
+      const TRACK_WIDTH = 10.5;
 
-          // Randomly spawn red danger obstacles directly onto track boundaries
-          let obstacleData = null;
-          if (Math.random() < 0.4 && platformSegments.length > 4) {
-            let obsX = xOffset + (Math.random() - 0.5) * (width - 1.5);
-            let obsEl = document.createElement('a-box');
-            obsEl.setAttribute('width', 1.2);
-            obsEl.setAttribute('height', 1.2);
-            obsEl.setAttribute('depth', 1.2);
-            obsEl.setAttribute('color', '#ff0000');
-            obsEl.setAttribute('material', 'emissive: #ff0055; emissiveIntensity: 2');
-            obsEl.setAttribute('position', `${obsX} 0.85 ${nextSpawnZ - (segmentZLength/2) + (Math.random() - 0.5) * 10}`);
-            obsEl.setAttribute('rotation', `${slopeAngle} 0 0`);
-            container.appendChild(obsEl);
-            obstacleData = { element: obsEl, x: obsX };
-          }
+      const clamp = (v, a, b) =>
+        Math.max(a, Math.min(b, v));
 
-          platformSegments.push({
-            element: el,
-            obstacle: obstacleData,
-            minZ: nextSpawnZ,
-            maxZ: nextSpawnZ - segmentZLength,
-            xCenter: xOffset,
-            width: width,
-            ySlope: slopeAngle,
-            isGap: false
-          });
-        } else {
-          platformSegments.push({
-            element: null,
-            obstacle: null,
-            minZ: nextSpawnZ,
-            maxZ: nextSpawnZ - segmentZLength,
-            isGap: true
-          });
+      // ============================================
+      // HELPER: CREATE A-FRAME ELEMENTS
+      // ============================================
+
+      function entity(tag, parent, attrs = {}) {
+        const el = document.createElement(tag);
+
+        for (const [key, value] of Object.entries(attrs)) {
+          el.setAttribute(key, value);
         }
-        nextSpawnZ -= segmentZLength;
+
+        parent.appendChild(el);
+        return el;
       }
 
-      function initTrack() {
-        container.innerHTML = '';
-        platformSegments = [];
-        nextSpawnZ = 15; 
-        for (let i = 0; i < trackLimit; i++) {
-          createPlatformSegment();
-        }
-        // Baseline flat initialization platform safety setup
-        if (platformSegments.length > 0 && platformSegments[0].element) {
-          platformSegments[0].xCenter = 0;
-          platformSegments[0].ySlope = 0;
-          platformSegments[0].width = 12;
-          platformSegments[0].element.setAttribute('position', '0 -0.25 2.5');
-          platformSegments[0].element.setAttribute('rotation', '0 0 0');
-          platformSegments[0].element.setAttribute('width', '12');
+      // ============================================
+      // BUILD NEON TRACK
+      // ============================================
+
+      function buildTrack() {
+        for (let i = 0; i < 24; i++) {
+          const z = -i * 5;
+
+          const left = entity('a-box', linesRoot, {
+            position: `${-5.15} -0.045 ${z}`,
+            width: .055,
+            height: .025,
+            depth: 3.2,
+            material:
+              'color:#26dfff; emissive:#14aaff; emissiveIntensity:.9'
+          });
+
+          const right = entity('a-box', linesRoot, {
+            position: `5.15 -0.045 ${z}`,
+            width: .055,
+            height: .025,
+            depth: 3.2,
+            material:
+              'color:#26dfff; emissive:#14aaff; emissiveIntensity:.9'
+          });
+
+          trackMarks.push({ el: left, z });
+          trackMarks.push({ el: right, z });
+
+          // Decorative lights outside both edges
+          for (const side of [-1, 1]) {
+            const glow = entity('a-box', sceneryRoot, {
+              position: `${side * 7.1} -0.05 ${z - 1}`,
+              width: .12,
+              height: .12,
+              depth: .12,
+              material:
+                'color:#7c4dff; emissive:#542bff; emissiveIntensity:1'
+            });
+
+            scenery.push({
+              el: glow,
+              z: z - 1
+            });
+          }
         }
       }
 
-      let lastTime = performance.now();
+      // ============================================
+      // CREATE OBSTACLES
+      // ============================================
 
-      function gameLoop(time) {
-        requestAnimationFrame(gameLoop);
-        
-        let dt = (time - lastTime) / 1000;
-        lastTime = time;
-        if (dt > 0.1) dt = 0.1; 
+      function makeObstacle(
+        z,
+        lane,
+        width = 1.45,
+        height = 1.8
+      ) {
+        const el = entity('a-box', obstaclesRoot, {
+          position: `${laneX[lane]} ${height / 2} ${z}`,
+          width,
+          height,
+          depth: 1.05,
+          material:
+            'color:#ff315f; emissive:#ff123e; emissiveIntensity:.8; metalness:.25; roughness:.35',
+          shadow: 'cast:true; receive:false'
+        });
 
-        if (!gameActive) return;
+        // Bright face on the obstacle
+        entity('a-box', el, {
+          position: '0 0 0.535',
+          width: width * .78,
+          height: height * .78,
+          depth: .025,
+          material:
+            'color:#ff9aae; emissive:#ff5178; emissiveIntensity:1'
+        });
 
-        speed = Math.min(maxSpeed, speed + acceleration * dt);
+        obstacles.push({
+          el,
+          z,
+          lane,
+          width,
+          height,
+          passed: false
+        });
+      }
 
-        if (keys.ArrowLeft || keys.KeyA) playerX -= sideSpeed * dt;
-        if (keys.ArrowRight || keys.KeyD) playerX += sideSpeed * dt;
+      // ============================================
+      // OBSTACLE GENERATION
+      // ============================================
 
-        let zMove = -speed * dt;
-        platformSegments.forEach(seg => {
-          seg.minZ -= zMove;
-          seg.maxZ -= zMove;
-          if (seg.element) {
-            let pos = seg.element.getAttribute('position');
-            pos.z -= zMove;
-            seg.element.setAttribute('position', pos);
-          }
-          if (seg.obstacle && seg.obstacle.element) {
-            let pos = seg.obstacle.element.getAttribute('position');
-            pos.z -= zMove;
-            seg.obstacle.element.setAttribute('position', pos);
+      function spawnPattern(z = -72) {
+        // Always leave at least one clear lane.
+        const r = Math.random();
 
-            if (seg.minZ >= -0.6 && seg.maxZ <= 0.6) {
-              let distToObsX = Math.abs(playerX - seg.obstacle.x);
-              let distToObsZ = Math.abs(pos.z);
-              if (distToObsX < 1.1 && distToObsZ < 1.1 && Math.abs(playerY - pos.y) < 1.2) {
-                triggerGameOver();
-              }
+        if (r < .23) {
+          // Two blocked lanes, one safe lane
+          const safe = Math.floor(Math.random() * 3);
+
+          for (let lane = 0; lane < 3; lane++) {
+            if (lane !== safe) {
+              makeObstacle(z, lane, 1.55, 1.9);
             }
           }
-        });
-        nextSpawnZ -= zMove;
-
-        let currentSegment = platformSegments.find(seg => 0 <= seg.minZ && 0 >= seg.maxZ);
-        let targetY = -999; 
-
-        if (currentSegment && !currentSegment.isGap) {
-          let progress = (0 - currentSegment.minZ) / (currentSegment.maxZ - currentSegment.minZ);
-          let rad = (currentSegment.ySlope * Math.PI) / 180;
-          let totalHeightChange = segmentZLength * Math.sin(rad);
-          let platformBaseY = (currentSegment.ySlope / 4) + (segmentZLength/2) * Math.sin(rad);
-          targetY = platformBaseY - (progress * totalHeightChange);
-
-          if (playerX < (currentSegment.xCenter - currentSegment.width / 2) || 
-              playerX > (currentSegment.xCenter + currentSegment.width / 2)) {
-            targetY = -999; 
-          }
-        }
-
-        if (playerY > targetY) {
-          fallVelocity += gravity * dt;
-          playerY += fallVelocity * dt;
-          if (playerY <= targetY && targetY !== -999) {
-            playerY = targetY;
-            fallVelocity = 0;
-          }
-        } else if (targetY !== -999) {
-          playerY = targetY;
-          fallVelocity = 0;
+        } else if (r < .37) {
+          // One larger obstacle
+          const lane = Math.floor(Math.random() * 3);
+          makeObstacle(z, lane, 2.1, 2.2);
         } else {
-          fallVelocity += gravity * dt;
-          playerY += fallVelocity * dt;
+          // Standard obstacle
+          makeObstacle(
+            z,
+            Math.floor(Math.random() * 3),
+            1.45,
+            1.75
+          );
+        }
+      }
+
+      // ============================================
+      // RESET GAME
+      // ============================================
+
+      function resetWorld() {
+        obstacles.forEach(o => o.el.remove());
+        obstacles = [];
+
+        score = 0;
+        elapsed = 0;
+        speed = 7.2;
+        spawnTimer = .8;
+
+        gameOver = false;
+
+        // Give the player some room at the start.
+        spawnPattern(-48);
+        spawnPattern(-66);
+
+        updateHUD();
+      }
+
+      // ============================================
+      // UPDATE HUD
+      // ============================================
+
+      function updateHUD() {
+        scoreEl.textContent =
+          String(Math.floor(score)).padStart(4, '0');
+
+        bestEl.textContent =
+          `BEST ${String(Math.floor(best)).padStart(4, '0')}`;
+
+        paceEl.textContent =
+          speed < 9
+            ? 'CHILL'
+            : speed < 11
+              ? 'CRUISING'
+              : 'SPICY';
+
+        statusEl.textContent =
+          running
+            ? (scene.is('vr-mode') ? 'VR RUNNING' : 'RUNNING')
+            : (gameOver ? 'RUN ENDED' : 'READY TO ROLL');
+      }
+
+      // ============================================
+      // MENU
+      // ============================================
+
+      function showOverlay(
+        title,
+        message,
+        buttonText = 'PLAY AGAIN'
+      ) {
+        titleEl.textContent = title;
+        textEl.textContent = message;
+        startBtn.textContent = buttonText;
+
+        overlay.classList.remove('hidden');
+      }
+
+      // ============================================
+      // START RUN
+      // ============================================
+
+      function startGame() {
+        resetWorld();
+
+        running = true;
+        overlay.classList.add('hidden');
+
+        lastTime = performance.now();
+
+        hint.textContent = scene.is('vr-mode')
+          ? 'Shift your body LEFT / RIGHT to dodge • R to recenter'
+          : 'Lean / shift LEFT and RIGHT to dodge • Desktop: A / D • Press R to recenter';
+
+        updateHUD();
+      }
+
+      // ============================================
+      // GAME OVER
+      // ============================================
+
+      function endGame() {
+        running = false;
+        gameOver = true;
+
+        best = Math.max(best, Math.floor(score));
+
+        updateHUD();
+
+        showOverlay(
+          'WIPEOUT!',
+          `You scored ${Math.floor(score)}. Your best is ${best}. Take a breath, then try another run.`,
+          'RUN IT BACK'
+        );
+      }
+
+      // ============================================
+      // RECENTER PLAYER
+      // ============================================
+
+      function recenter() {
+        const p = camera.object3D.position;
+
+        centerX = p.x;
+        desktopX = 0;
+      }
+
+      // ============================================
+      // BUTTONS
+      // ============================================
+
+      startBtn.addEventListener('click', startGame);
+
+      vrBtn.addEventListener('click', async () => {
+        try {
+          if (!scene.hasLoaded) {
+            await new Promise(resolve => {
+              scene.addEventListener('loaded', resolve, {
+                once: true
+              });
+            });
+          }
+
+          await scene.enterVR();
+
+          hint.textContent =
+            'Shift your body LEFT / RIGHT to dodge • R to recenter';
+        } catch (error) {
+          showOverlay(
+            'VR NOT AVAILABLE',
+            'Open this page in a WebXR-capable browser over HTTPS, then connect your headset. You can still test the game on desktop.',
+            'START DESKTOP RUN'
+          );
+        }
+      });
+
+      scene.addEventListener('enter-vr', () => {
+        hint.textContent =
+          'Shift your body LEFT / RIGHT to dodge • R to recenter';
+      });
+
+      scene.addEventListener('exit-vr', () => {
+        hint.textContent =
+          'Lean / shift LEFT and RIGHT to dodge • Desktop: A / D • Press R to recenter';
+      });
+
+      // ============================================
+      // DESKTOP CONTROLS
+      // ============================================
+
+      window.addEventListener('keydown', event => {
+        if (event.key.toLowerCase() === 'r') {
+          recenter();
         }
 
-        const playerRig = document.getElementById('player-rig');
-        playerRig.setAttribute('position', `${playerX} ${playerY + 0.5} 0`);
-        
-        const ballMesh = document.getElementById('player-ball');
-        let currentRot = ballMesh.getAttribute('rotation') || {x: 0, y: 0, z: 0};
-        ballMesh.setAttribute('rotation', `${currentRot.x + (speed * 6 * dt)} 0 ${-playerX * 5}`);
+        if (!scene.is('vr-mode')) {
+          if (
+            event.key.toLowerCase() === 'a' ||
+            event.key === 'ArrowLeft'
+          ) {
+            desktopX = clamp(
+              desktopX - .65,
+              -3.4,
+              3.4
+            );
+          }
 
+          if (
+            event.key.toLowerCase() === 'd' ||
+            event.key === 'ArrowRight'
+          ) {
+            desktopX = clamp(
+              desktopX + .65,
+              -3.4,
+              3.4
+            );
+          }
+
+          if (
+            event.code === 'Space' &&
+            !running
+          ) {
+            startGame();
+          }
+        }
+      });
+
+      // ============================================
+      // BUILD WORLD
+      // ============================================
+
+      buildTrack();
+
+      for (let i = 0; i < 3; i++) {
+        spawnPattern(-38 - i * 18);
+      }
+
+      // ============================================
+      // MAIN GAME LOOP
+      // ============================================
+
+      function tick(now) {
+        requestAnimationFrame(tick);
+
+        if (!lastTime) {
+          lastTime = now;
+        }
+
+        const dt = Math.min(
+          (now - lastTime) / 1000,
+          .04
+        );
+
+        lastTime = now;
+
+        const vr = scene.is('vr-mode');
+
+        // In VR, use horizontal headset movement.
+        if (vr) {
+          const rawX = camera.object3D.position.x;
+
+          playerX = clamp(
+            (rawX - centerX) * 1.7,
+            -3.5,
+            3.5
+          );
+        } else {
+          playerX = desktopX;
+        }
+
+        // Keep the player's camera rig stable.
+        rig.object3D.position.x +=
+          (0 - rig.object3D.position.x) *
+          Math.min(1, dt * 8);
+
+        if (!running) {
+          return;
+        }
+
+        elapsed += dt;
+
+        // A gentle speed increase, capped for comfort.
+        speed = Math.min(
+          12.2,
+          7.2 + elapsed * .105
+        );
+
+        score += dt * speed * 2.3;
+
+        // Spawn obstacles at regular intervals.
+        spawnTimer -= dt;
+
+        if (spawnTimer <= 0) {
+          spawnPattern(-76);
+
+          spawnTimer =
+            Math.max(
+              1.18,
+              2.05 - (speed - 7.2) * .075
+            ) + Math.random
