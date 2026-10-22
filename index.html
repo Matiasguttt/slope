@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Slope Clone</title>
+    <!-- Include A-Frame Library for 3D and VR WebGL rendering -->
+    <script src="https://aframe.io"></script>
+    <style>
+      html, body { margin: 0; padding: 0; overflow: hidden; background-color: #000; width: 100%; height: 100%; }
+      #scoreUi {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #00ffff;
+        font-family: monospace;
+        font-size: 32px;
+        font-weight: bold;
+        z-index: 999;
+        text-shadow: 0 0 10px #00ffff;
+        pointer-events: none;
+      }
+      #gameOverUi {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #ff0055;
+        font-family: monospace;
+        font-size: 48px;
+        font-weight: bold;
+        z-index: 999;
+        text-shadow: 0 0 15px #ff0055;
+        display: none;
+        text-align: center;
+        background: rgba(0,0,0,0.9);
+        padding: 20px 40px;
+        border: 2px solid #ff0055;
+        border-radius: 5px;
+      }
+      #gameOverUi span {
+        font-size: 18px;
+        color: #ffffff;
+        display: block;
+        margin-top: 15px;
+        text-shadow: none;
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- Instant HUD display -->
+    <div id="scoreUi">SCORE: 0</div>
+    <div id="gameOverUi">GAME OVER<span id="restartHint">Press SPACE or Click Screen to Try Again</span></div>
+
+    <!-- A-Frame Scene Embedded in Viewport Frame -->
+    <a-scene id="main-scene" embedded style="width: 100%; height: 100%;">
+      <!-- Pitch Black Space Environment -->
+      <a-sky color="#000000"></a-sky>
+
+      <!-- Low ambient illumination to keep things dark but readable -->
+      
+      
+
+      <!-- Dynamic Procedural Generation World Container -->
+      
+
+      <!-- Player Rigid Target Body -->
+      
+        <!-- Player Ball -->
+        <a-sphere id="player-ball" radius="0.5" color="#ffffff" material="emissive: #ffffff; emissiveIntensity: 0.5"></a-sphere>
+        <!-- Third person follow camera view angle -->
+        
+      
+    </a-scene>
+
+    <script>
+      // Game Speed and Loop Dynamics
+      let score = 0;
+      let gameActive = false; // Start inactive until scene rendering fires
+      let speed = 45; // Immediate high-velocity baseline
+      const maxSpeed = 100;
+      const acceleration = 2.0; 
+      
+      // Coordinate Position Vector Tracking
+      let playerX = 0;
+      let playerY = 0; 
+      let fallVelocity = 0;
+      const gravity = -40;
+      const sideSpeed = 28; 
+      
+      let keys = { ArrowLeft: false, ArrowRight: false, KeyA: false, KeyD: false };
+      
+      const container = document.getElementById('world-container');
+      const scoreUi = document.getElementById('scoreUi');
+      const gameOverUi = document.getElementById('gameOverUi');
+      const sceneEl = document.getElementById('main-scene');
+      
+      let platformSegments = [];
+      let segmentZLength = 25; 
+      let nextSpawnZ = 0; 
+      const trackLimit = 15;
+
+      // Event Control Listeners
+      window.addEventListener('keydown', (e) => {
+        if (e.code in keys) keys[e.code] = true;
+        if (!gameActive && (e.code === 'Space')) restartGame();
+      });
+      window.addEventListener('keyup', (e) => {
+        if (e.code in keys) keys[e.code] = false;
+      });
+      window.addEventListener('click', () => {
+        if (!gameActive) restartGame();
+      });
+
+      // Procedural Vector Generator Loop
+      function createPlatformSegment() {
+        let width = Math.max(3.5, 10 - (score * 0.15)); 
+        let xOffset = (Math.random() - 0.5) * 7; 
+        let slopeAngle = -Math.min(28, 10 + (score * 0.4)); 
+        
+        let isGap = Math.random() < 0.15 && platformSegments.length > 3;
+
+        if (!isGap) {
+          // Generate active platform segment
+          let el = document.createElement('a-box');
+          el.setAttribute('width', width);
+          el.setAttribute('height', 0.5);
+          el.setAttribute('depth', segmentZLength);
+          el.setAttribute('color', '#000000');
+          el.setAttribute('material', 'emissive: #00ffff; emissiveIntensity: 0.8; roughness: 1');
+          el.setAttribute('position', `${xOffset} ${slopeAngle/4} ${nextSpawnZ - (segmentZLength/2)}`);
+          el.setAttribute('rotation', `${slopeAngle} 0 0`);
+          container.appendChild(el);
+
+          // Randomly spawn red danger obstacles directly onto track boundaries
+          let obstacleData = null;
+          if (Math.random() < 0.4 && platformSegments.length > 4) {
+            let obsX = xOffset + (Math.random() - 0.5) * (width - 1.5);
+            let obsEl = document.createElement('a-box');
+            obsEl.setAttribute('width', 1.2);
+            obsEl.setAttribute('height', 1.2);
+            obsEl.setAttribute('depth', 1.2);
+            obsEl.setAttribute('color', '#ff0000');
+            obsEl.setAttribute('material', 'emissive: #ff0055; emissiveIntensity: 2');
+            obsEl.setAttribute('position', `${obsX} 0.85 ${nextSpawnZ - (segmentZLength/2) + (Math.random() - 0.5) * 10}`);
+            obsEl.setAttribute('rotation', `${slopeAngle} 0 0`);
+            container.appendChild(obsEl);
+            obstacleData = { element: obsEl, x: obsX };
+          }
+
+          platformSegments.push({
+            element: el,
+            obstacle: obstacleData,
+            minZ: nextSpawnZ,
+            maxZ: nextSpawnZ - segmentZLength,
+            xCenter: xOffset,
+            width: width,
+            ySlope: slopeAngle,
+            isGap: false
+          });
+        } else {
+          platformSegments.push({
+            element: null,
+            obstacle: null,
+            minZ: nextSpawnZ,
+            maxZ: nextSpawnZ - segmentZLength,
+            isGap: true
+          });
+        }
+        nextSpawnZ -= segmentZLength;
+      }
+
+      function initTrack() {
+        container.innerHTML = '';
+        platformSegments = [];
+        nextSpawnZ = 15; 
+        for (let i = 0; i < trackLimit; i++) {
+          createPlatformSegment();
+        }
+        // Baseline flat initialization platform safety setup
+        if (platformSegments.length > 0 && platformSegments[0].element) {
+          platformSegments[0].xCenter = 0;
+          platformSegments[0].ySlope = 0;
+          platformSegments[0].width = 12;
+          platformSegments[0].element.setAttribute('position', '0 -0.25 2.5');
+          platformSegments[0].element.setAttribute('rotation', '0 0 0');
+          platformSegments[0].element.setAttribute('width', '12');
+        }
+      }
+
+      let lastTime = performance.now();
+
+      function gameLoop(time) {
+        requestAnimationFrame(gameLoop);
+        
+        let dt = (time - lastTime) / 1000;
+        lastTime = time;
+        if (dt > 0.1) dt = 0.1; 
+
+        if (!gameActive) return;
+
+        speed = Math.min(maxSpeed, speed + acceleration * dt);
+
+        if (keys.ArrowLeft || keys.KeyA) playerX -= sideSpeed * dt;
+        if (keys.ArrowRight || keys.KeyD) playerX += sideSpeed * dt;
+
+        let zMove = -speed * dt;
+        platformSegments.forEach(seg => {
+          seg.minZ -= zMove;
+          seg.maxZ -= zMove;
+          if (seg.element) {
+            let pos = seg.element.getAttribute('position');
+            pos.z -= zMove;
+            seg.element.setAttribute('position', pos);
+          }
+          if (seg.obstacle && seg.obstacle.element) {
+            let pos = seg.obstacle.element.getAttribute('position');
+            pos.z -= zMove;
+            seg.obstacle.element.setAttribute('position', pos);
+
+            if (seg.minZ >= -0.6 && seg.maxZ <= 0.6) {
+              let distToObsX = Math.abs(playerX - seg.obstacle.x);
+              let distToObsZ = Math.abs(pos.z);
+              if (distToObsX < 1.1 && distToObsZ < 1.1 && Math.abs(playerY - pos.y) < 1.2) {
+                triggerGameOver();
+              }
+            }
+          }
+        });
+        nextSpawnZ -= zMove;
+
+        let currentSegment = platformSegments.find(seg => 0 <= seg.minZ && 0 >= seg.maxZ);
+        let targetY = -999; 
+
+        if (currentSegment && !currentSegment.isGap) {
+          let progress = (0 - currentSegment.minZ) / (currentSegment.maxZ - currentSegment.minZ);
+          let rad = (currentSegment.ySlope * Math.PI) / 180;
+          let totalHeightChange = segmentZLength * Math.sin(rad);
+          let platformBaseY = (currentSegment.ySlope / 4) + (segmentZLength/2) * Math.sin(rad);
+          targetY = platformBaseY - (progress * totalHeightChange);
+
+          if (playerX < (currentSegment.xCenter - currentSegment.width / 2) || 
+              playerX > (currentSegment.xCenter + currentSegment.width / 2)) {
+            targetY = -999; 
+          }
+        }
+
+        if (playerY > targetY) {
+          fallVelocity += gravity * dt;
+          playerY += fallVelocity * dt;
+          if (playerY <= targetY && targetY !== -999) {
+            playerY = targetY;
+            fallVelocity = 0;
+          }
+        } else if (targetY !== -999) {
+          playerY = targetY;
+          fallVelocity = 0;
+        } else {
+          fallVelocity += gravity * dt;
+          playerY += fallVelocity * dt;
+        }
+
+        const playerRig = document.getElementById('player-rig');
+        playerRig.setAttribute('position', `${playerX} ${playerY + 0.5} 0`);
+        
+        const ballMesh = document.getElementById('player-ball');
+        let currentRot = ballMesh.getAttribute('rotation') || {x: 0, y: 0, z: 0};
+        ballMesh.setAttribute('rotation', `${currentRot.x + (speed * 6 * dt)} 0 ${-playerX * 5}`);
+
