@@ -1,733 +1,214 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SLOPE VR: Body Dodge</title>
+  <title>VR Coin Collector</title>
 
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <!-- A-Frame VR engine -->
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
 
   <style>
-    :root {
-      color-scheme: dark;
-    }
-
-    html, body {
+    body {
       margin: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: #050711;
-      font-family: system-ui, sans-serif;
+      font-family: Arial, sans-serif;
     }
 
     #hud {
       position: fixed;
-      z-index: 5;
-      inset: 16px 16px auto 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      pointer-events: none;
-      gap: 12px;
-    }
-
-    .panel {
-      background: rgba(5, 9, 24, .72);
-      border: 1px solid rgba(82, 229, 255, .38);
-      box-shadow: 0 0 24px #00c8ff18;
-      border-radius: 14px;
-      padding: 11px 15px;
-      backdrop-filter: blur(8px);
-    }
-
-    .eyebrow {
-      font-size: 10px;
-      letter-spacing: .22em;
-      color: #65eaff;
-      font-weight: 800;
-    }
-
-    #score {
-      font-size: 27px;
-      line-height: 1.15;
-      font-weight: 850;
-    }
-
-    #status {
-      font-size: 12px;
-      color: #c2d2ed;
-      margin-top: 3px;
-    }
-
-    #centerMsg {
-      position: fixed;
-      z-index: 6;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: min(480px, calc(100vw - 36px));
-      text-align: center;
-      background: rgba(4, 8, 24, .9);
-      border: 1px solid #39dfff;
-      border-radius: 22px;
-      padding: 25px 24px;
-      box-shadow: 0 0 55px #00d9ff25;
+      top: 15px;
+      left: 15px;
+      z-index: 10;
       color: white;
-    }
-
-    #centerMsg h1 {
-      margin: 0 0 8px;
-      font-size: clamp(28px, 5vw, 46px);
-      letter-spacing: .06em;
-    }
-
-    #centerMsg p {
-      color: #c6d6ed;
-      line-height: 1.5;
-      margin: 8px 0 18px;
-    }
-
-    button {
-      pointer-events: auto;
-      border: 0;
-      border-radius: 999px;
-      padding: 12px 21px;
-      margin: 4px;
-      color: #06101c;
-      background: #63ecff;
-      font-weight: 850;
-      cursor: pointer;
-    }
-
-    button.secondary {
-      color: white;
-      background: #202d48;
-      border: 1px solid #445778;
-    }
-
-    #hint {
-      position: fixed;
-      z-index: 5;
-      bottom: 18px;
-      left: 50%;
-      transform: translateX(-50%);
-      max-width: calc(100vw - 32px);
-      text-align: center;
-      color: #c4d7f3;
-      background: #050919b8;
-      border: 1px solid #263a5e;
-      border-radius: 999px;
-      padding: 9px 15px;
-      font-size: 12px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-size: 18px;
       pointer-events: none;
-      white-space: nowrap;
-    }
-
-    #crosshair {
-      position: fixed;
-      z-index: 4;
-      left: 50%;
-      top: 50%;
-      width: 10px;
-      height: 10px;
-      transform: translate(-50%, -50%);
-      border: 1px solid #8ff4ff;
-      border-radius: 50%;
-      pointer-events: none;
-      opacity: .45;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    @media (max-width: 540px) {
-      #hud {
-        inset: 8px 8px auto;
-      }
-
-      .panel {
-        padding: 8px 10px;
-      }
-
-      #score {
-        font-size: 22px;
-      }
-
-      #hint {
-        font-size: 10px;
-        bottom: 10px;
-        white-space: normal;
-      }
     }
   </style>
 </head>
 
 <body>
-
-  <!-- HUD -->
   <div id="hud">
-    <div class="panel">
-      <div class="eyebrow">SLOPE VR / BODY DODGE</div>
-      <div id="score">0000</div>
-      <div id="status">READY TO ROLL</div>
-    </div>
-
-    <div class="panel" style="text-align:right">
-      <div class="eyebrow">PACE</div>
-      <div id="pace" style="font-size:20px;font-weight:850">
-        CHILL
-      </div>
-      <div id="best" style="font-size:11px;color:#c2d2ed">
-        BEST 0000
-      </div>
-    </div>
+    🪙 Coins: <span id="score">0</span> / 10
+    <br>
+    <small>Walk around or use WASD to collect coins!</small>
   </div>
 
-  <div id="crosshair"></div>
-
-  <!-- Start / game over menu -->
-  <div id="centerMsg">
-    <div class="eyebrow">A BODY-MOTION VR RUNNER</div>
-
-    <h1 id="messageTitle">SLOPE VR</h1>
-
-    <p id="messageText">
-      Ride the neon slope. Dodge the red blocks by physically
-      leaning or stepping left and right. The run starts slower
-      than classic Slope, then gently picks up pace.
-    </p>
-
-    <button id="startBtn">START RUN</button>
-    <button id="vrBtn" class="secondary">ENTER VR</button>
-
-    <p style="font-size:11px;margin-bottom:0">
-      VR tip: clear a little space around you. Small movements work best.
-    </p>
-  </div>
-
-  <div id="hint">
-    Lean / shift LEFT and RIGHT to dodge • Desktop: A / D • Press R to recenter
-  </div>
-
-  <!-- A-FRAME SCENE -->
   <a-scene
-    id="scene"
-    renderer="antialias: true; colorManagement: true"
-    vr-mode-ui="enabled: true"
-    webxr="optionalFeatures: local-floor, bounded-floor"
-    background="color: #050711"
-    fog="type: linear; color: #080d20; near: 18; far: 95">
-
-    <a-assets>
-      <a-mixin
-        id="blockMat"
-        material="color: #ff315f; emissive: #ff123e;
-        emissiveIntensity: 0.75; metalness: 0.25; roughness: 0.35">
-      </a-mixin>
-    </a-assets>
+    background="color: #10152b"
+    renderer="antialias: true"
+    game-manager>
 
     <!-- Lighting -->
-    <a-entity
-      light="type: ambient; color: #8298ff; intensity: 0.8">
-    </a-entity>
+    <a-entity light="type: ambient; intensity: 1.2"></a-entity>
 
     <a-entity
-      light="type: directional; color: #75eaff; intensity: 1.1"
+      light="type: directional; intensity: 1.5"
       position="-3 8 5">
     </a-entity>
 
-    <!-- Game world -->
-    <a-entity id="world">
+    <!-- Ground -->
+    <a-plane
+      position="0 0 0"
+      rotation="-90 0 0"
+      width="30"
+      height="30"
+      color="#252d46"
+      shadow>
+    </a-plane>
 
-      <!-- Neon track -->
-      <a-plane
-        id="track"
-        position="0 -0.12 -22"
-        rotation="-90 0 0"
-        width="12"
-        height="120"
-        material="color: #101a38; emissive: #071b4b;
-        emissiveIntensity: .55; roughness: .7">
-      </a-plane>
+    <!-- Grid floor decoration -->
+    <a-grid
+      position="0 0.02 0"
+      width="30"
+      height="30"
+      color="#586b9b">
+    </a-grid>
 
-      <a-entity id="trackLines"></a-entity>
-      <a-entity id="obstacles"></a-entity>
-      <a-entity id="scenery"></a-entity>
+    <!-- Arena walls -->
+    <a-box position="0 1 -15"
+      width="30" height="2" depth="0.3"
+      color="#39456b"></a-box>
+
+    <a-box position="0 1 15"
+      width="30" height="2" depth="0.3"
+      color="#39456b"></a-box>
+
+    <a-box position="-15 1 0"
+      width="0.3" height="2" depth="30"
+      color="#39456b"></a-box>
+
+    <a-box position="15 1 0"
+      width="0.3" height="2" depth="30"
+      color="#39456b"></a-box>
+
+    <!-- Obstacles -->
+    <a-box position="-4 0.8 -3"
+      width="2" height="1.6" depth="2"
+      color="#e85d75"></a-box>
+
+    <a-box position="4 0.8 -6"
+      width="2" height="1.6" depth="2"
+      color="#e85d75"></a-box>
+
+    <a-cylinder position="3 1 3"
+      radius="0.8" height="2"
+      color="#6c63ff"></a-cylinder>
+
+    <a-box position="-5 0.7 6"
+      width="2" height="1.4" depth="2"
+      color="#6c63ff"></a-box>
+
+    <!-- Ten collectible coins -->
+    <a-entity class="coin" position="0 1.2 -3">
+      <a-sphere radius="0.35" color="#ffcc33"
+        material="emissive: #ff9900; emissiveIntensity: 0.8"></a-sphere>
+      <a-ring radius-inner="0.4" radius-outer="0.5"
+        color="#fff078" rotation="90 0 0"></a-ring>
+      <a-animation attribute="rotation"
+        to="0 360 0" dur="2500" repeat="indefinite"
+        easing="linear"></a-animation>
     </a-entity>
 
-    <!-- Player rig -->
-    <a-entity id="rig" position="0 0 0">
+    <a-entity class="coin" position="5 1.2 -2">
+      <a-sphere radius="0.35" color="#ffcc33"
+        material="emissive: #ff9900; emissiveIntensity: 0.8"></a-sphere>
+    </a-entity>
+
+    <a-entity class="coin" position="-6 1.2 -6">
+      <a-sphere radius="0.35" color="#ffcc33"
+        material="emissive: #ff9900; emissiveIntensity: 0.8"></a-sphere>
+    </a-entity>
+
+    <a-entity class="coin" position="7 1.2 5">
+      <a-sphere radius="0.35" color="#ffcc33"
+        material="emissive: #ff9900; emissiveIntensity: 0.8"></a-sphere>
+    </a-entity>
+
+    <a-entity class="coin" position="-8 1.2 2">
+      <a-sphere radius="0.35" color="#ffcc33"
+        material="emissive: #ff9900; emissiveIntensity: 0.8"></a-sphere>
+    </a-entity>
+
+    <a-entity class="coin" position="0 1.2 7">
+      <a-sphere radius="0.35" color="#ffcc33"
+        material="emissive: #ff9900; emissiveIntensity: 0.8"></a-sphere>
+    </a-entity>
+
+    <a-entity class="coin" position="-10 1.2 -10">
+      <a-sphere radius="0.35" color="#ffcc33"
+        material="emissive: #ff9900; emissiveIntensity: 0.8"></a-sphere>
+    </a-entity>
+
+    <a-entity class="coin" position="10 1.2 -9">
+      <a-sphere radius="0.35" color="#ffcc33"
+        material="emissive: #ff9900; emissiveIntensity: 0.8"></a-sphere>
+    </a-entity>
+
+    <a-entity class="coin" position="-3 1.2 10">
+      <a-sphere radius="0.35" color="#ffcc33"
+        material="emissive: #ff9900; emissiveIntensity: 0.8"></a-sphere>
+    </a-entity>
+
+    <a-entity class="coin" position="10 1.2 10">
+      <a-sphere radius="0.35" color="#ffcc33"
+        material="emissive: #ff9900; emissiveIntensity: 0.8"></a-sphere>
+    </a-entity>
+
+    <!-- Player camera -->
+    <a-entity id="player" position="0 0 5">
       <a-camera
-        id="camera"
-        position="0 1.65 0"
-        look-controls="enabled: true"
-        wasd-controls="enabled: false">
-
-        <a-entity
-          cursor="rayOrigin: mouse"
-          raycaster="objects: .clickable"
-          position="0 0 -1">
-        </a-entity>
-
+        position="0 1.6 0"
+        wasd-controls="acceleration: 18"
+        look-controls="pointerLockEnabled: false">
       </a-camera>
     </a-entity>
+
+    <!-- VR entry button is created automatically by A-Frame -->
 
   </a-scene>
 
   <script>
-    (() => {
-      // ============================================
-      // ELEMENTS
-      // ============================================
+    AFRAME.registerComponent("game-manager", {
+      init: function () {
+        this.score = 0;
+        this.camera = document.querySelector("#player")
+          .querySelector("a-camera");
+        this.scoreText = document.querySelector("#score");
+        this.coins = Array.from(document.querySelectorAll(".coin"));
+        this.cameraPosition = new THREE.Vector3();
+        this.coinPosition = new THREE.Vector3();
+        this.finished = false;
+      },
 
-      const scene = document.querySelector('#scene');
-      const rig = document.querySelector('#rig');
-      const camera = document.querySelector('#camera');
+      tick: function () {
+        if (this.finished || !this.camera) return;
 
-      const obstaclesRoot = document.querySelector('#obstacles');
-      const sceneryRoot = document.querySelector('#scenery');
-      const linesRoot = document.querySelector('#trackLines');
+        this.camera.object3D.getWorldPosition(this.cameraPosition);
 
-      const scoreEl = document.querySelector('#score');
-      const statusEl = document.querySelector('#status');
-      const paceEl = document.querySelector('#pace');
-      const bestEl = document.querySelector('#best');
+        this.coins.forEach((coin) => {
+          if (!coin.parentNode) return;
 
-      const overlay = document.querySelector('#centerMsg');
-      const titleEl = document.querySelector('#messageTitle');
-      const textEl = document.querySelector('#messageText');
+          coin.object3D.getWorldPosition(this.coinPosition);
 
-      const startBtn = document.querySelector('#startBtn');
-      const vrBtn = document.querySelector('#vrBtn');
-      const hint = document.querySelector('#hint');
+          // Collect a coin when the player gets close.
+          if (this.cameraPosition.distanceTo(this.coinPosition) < 1.2) {
+            coin.parentNode.removeChild(coin);
+            this.score++;
+            this.scoreText.textContent = this.score;
 
-      // ============================================
-      // GAME SETTINGS
-      // ============================================
-
-      let running = false;
-      let gameOver = false;
-
-      let score = 0;
-      let speed = 7.2;
-      let elapsed = 0;
-
-      let best = 0;
-      let playerX = 0;
-      let centerX = 0;
-      let desktopX = 0;
-
-      let lastTime = 0;
-      let spawnTimer = 0;
-
-      let obstacles = [];
-      let scenery = [];
-      let trackMarks = [];
-
-      const laneX = [-2.45, 0, 2.45];
-      const TRACK_WIDTH = 10.5;
-
-      const clamp = (v, a, b) =>
-        Math.max(a, Math.min(b, v));
-
-      // ============================================
-      // HELPER: CREATE A-FRAME ELEMENTS
-      // ============================================
-
-      function entity(tag, parent, attrs = {}) {
-        const el = document.createElement(tag);
-
-        for (const [key, value] of Object.entries(attrs)) {
-          el.setAttribute(key, value);
-        }
-
-        parent.appendChild(el);
-        return el;
-      }
-
-      // ============================================
-      // BUILD NEON TRACK
-      // ============================================
-
-      function buildTrack() {
-        for (let i = 0; i < 24; i++) {
-          const z = -i * 5;
-
-          const left = entity('a-box', linesRoot, {
-            position: `${-5.15} -0.045 ${z}`,
-            width: .055,
-            height: .025,
-            depth: 3.2,
-            material:
-              'color:#26dfff; emissive:#14aaff; emissiveIntensity:.9'
-          });
-
-          const right = entity('a-box', linesRoot, {
-            position: `5.15 -0.045 ${z}`,
-            width: .055,
-            height: .025,
-            depth: 3.2,
-            material:
-              'color:#26dfff; emissive:#14aaff; emissiveIntensity:.9'
-          });
-
-          trackMarks.push({ el: left, z });
-          trackMarks.push({ el: right, z });
-
-          // Decorative lights outside both edges
-          for (const side of [-1, 1]) {
-            const glow = entity('a-box', sceneryRoot, {
-              position: `${side * 7.1} -0.05 ${z - 1}`,
-              width: .12,
-              height: .12,
-              depth: .12,
-              material:
-                'color:#7c4dff; emissive:#542bff; emissiveIntensity:1'
-            });
-
-            scenery.push({
-              el: glow,
-              z: z - 1
-            });
-          }
-        }
-      }
-
-      // ============================================
-      // CREATE OBSTACLES
-      // ============================================
-
-      function makeObstacle(
-        z,
-        lane,
-        width = 1.45,
-        height = 1.8
-      ) {
-        const el = entity('a-box', obstaclesRoot, {
-          position: `${laneX[lane]} ${height / 2} ${z}`,
-          width,
-          height,
-          depth: 1.05,
-          material:
-            'color:#ff315f; emissive:#ff123e; emissiveIntensity:.8; metalness:.25; roughness:.35',
-          shadow: 'cast:true; receive:false'
-        });
-
-        // Bright face on the obstacle
-        entity('a-box', el, {
-          position: '0 0 0.535',
-          width: width * .78,
-          height: height * .78,
-          depth: .025,
-          material:
-            'color:#ff9aae; emissive:#ff5178; emissiveIntensity:1'
-        });
-
-        obstacles.push({
-          el,
-          z,
-          lane,
-          width,
-          height,
-          passed: false
-        });
-      }
-
-      // ============================================
-      // OBSTACLE GENERATION
-      // ============================================
-
-      function spawnPattern(z = -72) {
-        // Always leave at least one clear lane.
-        const r = Math.random();
-
-        if (r < .23) {
-          // Two blocked lanes, one safe lane
-          const safe = Math.floor(Math.random() * 3);
-
-          for (let lane = 0; lane < 3; lane++) {
-            if (lane !== safe) {
-              makeObstacle(z, lane, 1.55, 1.9);
+            if (this.score >= 10) {
+              this.finished = true;
+              document.getElementById("hud").innerHTML =
+                "🏆 YOU WIN!<br>All 10 coins collected!";
             }
           }
-        } else if (r < .37) {
-          // One larger obstacle
-          const lane = Math.floor(Math.random() * 3);
-          makeObstacle(z, lane, 2.1, 2.2);
-        } else {
-          // Standard obstacle
-          makeObstacle(
-            z,
-            Math.floor(Math.random() * 3),
-            1.45,
-            1.75
-          );
-        }
+        });
       }
-
-      // ============================================
-      // RESET GAME
-      // ============================================
-
-      function resetWorld() {
-        obstacles.forEach(o => o.el.remove());
-        obstacles = [];
-
-        score = 0;
-        elapsed = 0;
-        speed = 7.2;
-        spawnTimer = .8;
-
-        gameOver = false;
-
-        // Give the player some room at the start.
-        spawnPattern(-48);
-        spawnPattern(-66);
-
-        updateHUD();
-      }
-
-      // ============================================
-      // UPDATE HUD
-      // ============================================
-
-      function updateHUD() {
-        scoreEl.textContent =
-          String(Math.floor(score)).padStart(4, '0');
-
-        bestEl.textContent =
-          `BEST ${String(Math.floor(best)).padStart(4, '0')}`;
-
-        paceEl.textContent =
-          speed < 9
-            ? 'CHILL'
-            : speed < 11
-              ? 'CRUISING'
-              : 'SPICY';
-
-        statusEl.textContent =
-          running
-            ? (scene.is('vr-mode') ? 'VR RUNNING' : 'RUNNING')
-            : (gameOver ? 'RUN ENDED' : 'READY TO ROLL');
-      }
-
-      // ============================================
-      // MENU
-      // ============================================
-
-      function showOverlay(
-        title,
-        message,
-        buttonText = 'PLAY AGAIN'
-      ) {
-        titleEl.textContent = title;
-        textEl.textContent = message;
-        startBtn.textContent = buttonText;
-
-        overlay.classList.remove('hidden');
-      }
-
-      // ============================================
-      // START RUN
-      // ============================================
-
-      function startGame() {
-        resetWorld();
-
-        running = true;
-        overlay.classList.add('hidden');
-
-        lastTime = performance.now();
-
-        hint.textContent = scene.is('vr-mode')
-          ? 'Shift your body LEFT / RIGHT to dodge • R to recenter'
-          : 'Lean / shift LEFT and RIGHT to dodge • Desktop: A / D • Press R to recenter';
-
-        updateHUD();
-      }
-
-      // ============================================
-      // GAME OVER
-      // ============================================
-
-      function endGame() {
-        running = false;
-        gameOver = true;
-
-        best = Math.max(best, Math.floor(score));
-
-        updateHUD();
-
-        showOverlay(
-          'WIPEOUT!',
-          `You scored ${Math.floor(score)}. Your best is ${best}. Take a breath, then try another run.`,
-          'RUN IT BACK'
-        );
-      }
-
-      // ============================================
-      // RECENTER PLAYER
-      // ============================================
-
-      function recenter() {
-        const p = camera.object3D.position;
-
-        centerX = p.x;
-        desktopX = 0;
-      }
-
-      // ============================================
-      // BUTTONS
-      // ============================================
-
-      startBtn.addEventListener('click', startGame);
-
-      vrBtn.addEventListener('click', async () => {
-        try {
-          if (!scene.hasLoaded) {
-            await new Promise(resolve => {
-              scene.addEventListener('loaded', resolve, {
-                once: true
-              });
-            });
-          }
-
-          await scene.enterVR();
-
-          hint.textContent =
-            'Shift your body LEFT / RIGHT to dodge • R to recenter';
-        } catch (error) {
-          showOverlay(
-            'VR NOT AVAILABLE',
-            'Open this page in a WebXR-capable browser over HTTPS, then connect your headset. You can still test the game on desktop.',
-            'START DESKTOP RUN'
-          );
-        }
-      });
-
-      scene.addEventListener('enter-vr', () => {
-        hint.textContent =
-          'Shift your body LEFT / RIGHT to dodge • R to recenter';
-      });
-
-      scene.addEventListener('exit-vr', () => {
-        hint.textContent =
-          'Lean / shift LEFT and RIGHT to dodge • Desktop: A / D • Press R to recenter';
-      });
-
-      // ============================================
-      // DESKTOP CONTROLS
-      // ============================================
-
-      window.addEventListener('keydown', event => {
-        if (event.key.toLowerCase() === 'r') {
-          recenter();
-        }
-
-        if (!scene.is('vr-mode')) {
-          if (
-            event.key.toLowerCase() === 'a' ||
-            event.key === 'ArrowLeft'
-          ) {
-            desktopX = clamp(
-              desktopX - .65,
-              -3.4,
-              3.4
-            );
-          }
-
-          if (
-            event.key.toLowerCase() === 'd' ||
-            event.key === 'ArrowRight'
-          ) {
-            desktopX = clamp(
-              desktopX + .65,
-              -3.4,
-              3.4
-            );
-          }
-
-          if (
-            event.code === 'Space' &&
-            !running
-          ) {
-            startGame();
-          }
-        }
-      });
-
-      // ============================================
-      // BUILD WORLD
-      // ============================================
-
-      buildTrack();
-
-      for (let i = 0; i < 3; i++) {
-        spawnPattern(-38 - i * 18);
-      }
-
-      // ============================================
-      // MAIN GAME LOOP
-      // ============================================
-
-      function tick(now) {
-        requestAnimationFrame(tick);
-
-        if (!lastTime) {
-          lastTime = now;
-        }
-
-        const dt = Math.min(
-          (now - lastTime) / 1000,
-          .04
-        );
-
-        lastTime = now;
-
-        const vr = scene.is('vr-mode');
-
-        // In VR, use horizontal headset movement.
-        if (vr) {
-          const rawX = camera.object3D.position.x;
-
-          playerX = clamp(
-            (rawX - centerX) * 1.7,
-            -3.5,
-            3.5
-          );
-        } else {
-          playerX = desktopX;
-        }
-
-        // Keep the player's camera rig stable.
-        rig.object3D.position.x +=
-          (0 - rig.object3D.position.x) *
-          Math.min(1, dt * 8);
-
-        if (!running) {
-          return;
-        }
-
-        elapsed += dt;
-
-        // A gentle speed increase, capped for comfort.
-        speed = Math.min(
-          12.2,
-          7.2 + elapsed * .105
-        );
-
-        score += dt * speed * 2.3;
-
-        // Spawn obstacles at regular intervals.
-        spawnTimer -= dt;
-
-        if (spawnTimer <= 0) {
-          spawnPattern(-76);
-
-          spawnTimer =
-            Math.max(
-              1.18,
-              2.05 - (speed - 7.2) * .075
-            ) + Math.random
+    });
+  </script>
+</body>
+</html>
